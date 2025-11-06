@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Calendar, User, Phone, Mail, Clock, AlertCircle, CheckCircle, X } from 'lucide-react';
 import API from '../utils/api';
@@ -10,9 +10,11 @@ export default function FollowUps({ refreshTrigger, onDataChange }) {
   const [showNotification, setShowNotification] = useState(false);
   const [dueToday, setDueToday] = useState([]);
   const [completing, setCompleting] = useState(null);
+  const [dismissedForToday, setDismissedForToday] = useState(false);
+  const hasAutoShownRef = useRef(false);
 
-  const loadFollowups = async () => {
-    setLoading(true);
+  const loadFollowups = async (mode = 'auto', showSpinner = false) => {
+    if (showSpinner) setLoading(true);
     try {
       const [allRes, pendingRes] = await Promise.all([
         API.get('/contacts/followups/all'),
@@ -22,23 +24,50 @@ export default function FollowUps({ refreshTrigger, onDataChange }) {
       setFollowups(allRes.data);
       setDueToday(pendingRes.data);
       
-      // Show notification if there are follow-ups due today
-      if (pendingRes.data.length > 0) {
+      // Auto-open notification only if:
+      // - there are due items today
+      // - not dismissed for today
+      // - not already auto-shown in this session
+      // - mode is 'auto' (not 'silent')
+      if (
+        mode === 'auto' &&
+        pendingRes.data.length > 0 &&
+        !dismissedForToday &&
+        !hasAutoShownRef.current
+      ) {
         setShowNotification(true);
+        hasAutoShownRef.current = true;
       }
     } catch (err) {
       console.error('Error loading follow-ups:', err);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
+  // Initialize dismissal state from localStorage on mount
   useEffect(() => {
-    loadFollowups();
-    
-    // Check for new follow-ups every 5 minutes
-    const interval = setInterval(loadFollowups, 5 * 60 * 1000);
+    const key = 'followups_notice_dismissed_date';
+    const todayStr = dayjs().format('YYYY-MM-DD');
+    const stored = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+    setDismissedForToday(stored === todayStr);
+  }, []);
+
+  // Load followups when component mounts and when refreshTrigger changes.
+  // On mount and interval: use 'auto' to allow a single automatic open.
+  // On refreshTrigger updates (e.g., after saving): use 'silent' to avoid re-opening.
+  useEffect(() => {
+    loadFollowups('auto', true);
+
+    // Check for new follow-ups every 5 minutes (auto mode) - set once on mount
+    const interval = setInterval(() => loadFollowups('auto', false), 5 * 60 * 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      loadFollowups('silent', false);
+    }
   }, [refreshTrigger]);
 
   const getStatusColor = (date) => {
@@ -73,8 +102,8 @@ export default function FollowUps({ refreshTrigger, onDataChange }) {
     try {
       await API.patch(`/contacts/followups/${logId}/complete`);
       
-      // Reload follow-ups from server to ensure consistency
-      await loadFollowups();
+      // Reload follow-ups from server to ensure consistency (silent to avoid popup)
+      await loadFollowups('silent', false);
       
       // Notify parent to refresh dashboard
       if (onDataChange) {
@@ -88,6 +117,18 @@ export default function FollowUps({ refreshTrigger, onDataChange }) {
     }
   };
 
+  const closeNotificationForToday = () => {
+    setShowNotification(false);
+    const key = 'followups_notice_dismissed_date';
+    const todayStr = dayjs().format('YYYY-MM-DD');
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(key, todayStr);
+      }
+    } catch (_) {}
+    setDismissedForToday(true);
+  };
+
   return (
     <>
       {/* Notification Popup for Due Today */}
@@ -98,7 +139,7 @@ export default function FollowUps({ refreshTrigger, onDataChange }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowNotification(false)}
+              onClick={closeNotificationForToday}
               className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
             />
             <motion.div
@@ -120,7 +161,7 @@ export default function FollowUps({ refreshTrigger, onDataChange }) {
                       </div>
                     </div>
                     <button
-                      onClick={() => setShowNotification(false)}
+                      onClick={closeNotificationForToday}
                       className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors"
                     >
                       <X className="w-5 h-5" />
@@ -181,7 +222,7 @@ export default function FollowUps({ refreshTrigger, onDataChange }) {
 
                 <div className="p-4 bg-slate-50 border-t border-slate-200">
                   <button
-                    onClick={() => setShowNotification(false)}
+                    onClick={closeNotificationForToday}
                     className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg hover:from-blue-600 hover:to-indigo-600 transition-all font-medium"
                   >
                     Got it!

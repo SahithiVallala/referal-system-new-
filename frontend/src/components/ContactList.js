@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Search, Phone, Mail, User, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import API from '../utils/api';
@@ -10,21 +10,27 @@ export default function ContactList({ refreshTrigger, onDataChange }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [loading, setLoading] = useState(true);
+  const didInitRef = useRef(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (showSpinner) => {
+    if (showSpinner) setLoading(true);
     try {
       const res = await API.get('/contacts');
       setContacts(res.data);
     } catch (err) {
       console.error('Error loading contacts:', err);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
+    if (!didInitRef.current) {
+      didInitRef.current = true;
+      load(true);
+    } else {
+      load(false);
+    }
   }, [refreshTrigger]);
 
   const filteredContacts = contacts.filter((c) => {

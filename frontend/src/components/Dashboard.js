@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, Users, CheckCircle, XCircle, Clock, FileText, Download, Trash2, AlertTriangle } from 'lucide-react';
 import API from '../utils/api';
@@ -8,14 +8,15 @@ export default function Dashboard({ refreshTrigger }) {
   const [contacts, setContacts] = useState([]);
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const didInitRef = useRef(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showClearReqConfirm, setShowClearReqConfirm] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [deletingReq, setDeletingReq] = useState(null);
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
+    const loadData = async (showSpinner) => {
+      if (showSpinner) setLoading(true);
       try {
         const [contactsRes, requirementsRes] = await Promise.all([
           API.get('/contacts'),
@@ -26,10 +27,15 @@ export default function Dashboard({ refreshTrigger }) {
       } catch (err) {
         console.error('Error loading dashboard data:', err);
       } finally {
-        setLoading(false);
+        if (showSpinner) setLoading(false);
       }
     };
-    loadData();
+    if (!didInitRef.current) {
+      didInitRef.current = true;
+      loadData(true);
+    } else {
+      loadData(false);
+    }
   }, [refreshTrigger]);
 
   const contacted = contacts.filter(c => c.latest_log);
