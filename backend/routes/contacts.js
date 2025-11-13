@@ -496,13 +496,22 @@ router.patch('/followups/:logId/complete', async (req, res) => {
 router.post('/:id/log', async (req, res) => {
   try {
     const contact_id = req.params.id;
-    const { contacted_by, response, follow_up_date, notes } = req.body;
+    const { contacted_by, response, follow_up_date, notes, contacted_at } = req.body;
     const id = uuidv4();
-    const contacted_at = new Date().toISOString();
+    
+    // Use custom contacted_at if provided, otherwise use current timestamp
+    let contactedAtValue;
+    if (contacted_at) {
+      // If date is provided, convert to ISO string with time
+      const customDate = new Date(contacted_at);
+      contactedAtValue = customDate.toISOString();
+    } else {
+      contactedAtValue = new Date().toISOString();
+    }
 
     await run(
       'INSERT INTO contact_logs (id,contact_id,contacted_at,contacted_by,response,follow_up_date,notes) VALUES (?,?,?,?,?,?,?)',
-      [id, contact_id, contacted_at, contacted_by||null, response||'pending', follow_up_date||null, notes||null]
+      [id, contact_id, contactedAtValue, contacted_by||null, response||'pending', follow_up_date||null, notes||null]
     );
 
     const log = await get('SELECT * FROM contact_logs WHERE id = ?', [id]);

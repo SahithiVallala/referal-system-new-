@@ -168,6 +168,12 @@ export default function ContactList({ refreshTrigger, onDataChange }) {
                           <Clock className="w-3 h-3" />
                           Last contacted: {new Date(c.latest_log.contacted_at).toLocaleDateString()}
                         </div>
+                        {c.latest_log.contacted_by && (
+                          <div className="flex items-center gap-2 text-xs text-slate-600 mt-1">
+                            <User className="w-3 h-3" />
+                            Contacted by: <span className="font-medium text-blue-600">{c.latest_log.contacted_by}</span>
+                          </div>
+                        )}
                         {c.latest_log.notes && (
                           <p className="text-xs text-slate-600 mt-1 italic">"{c.latest_log.notes}"</p>
                         )}

@@ -1,0 +1,45 @@
+apiVersion: '2021-07-01'
+location: centralus
+name: jr-tracker-container
+properties:
+  containers:
+  - name: jr-tracker-backend
+    properties:
+      image: jrtrackeracr326.azurecr.io/jr-tracker-backend:latest
+      resources:
+        requests:
+          cpu: 1
+          memoryInGb: 1.5
+      ports:
+      - port: 4000
+      environmentVariables:
+      - name: NODE_ENV
+        value: production
+      volumeMounts:
+      - name: database-storage
+        mountPath: /mnt/data
+  - name: jr-tracker-frontend
+    properties:
+      image: jrtrackeracr326.azurecr.io/jr-tracker-frontend:latest
+      resources:
+        requests:
+          cpu: 0.5
+          memoryInGb: 1
+      ports:
+      - port: 80
+  osType: Linux
+  restartPolicy: Always
+  ipAddress:
+    type: Public
+    ports:
+    - protocol: tcp
+      port: 4000
+    - protocol: tcp
+      port: 80
+  volumes:
+  - name: database-storage
+    azureFile:
+      shareName: jr-tracker-data
+      storageAccountName: jrtrackerdata7653
+      storageAccountKey: MogvvuuK39Tu/g+RB36PoVYh/cyOtZmTLUsGcES4xh43szJzrX8XDIa7AEnHZl/MWw+RzEtAh8Bm+AStGp3SOQ==
+type: Microsoft.ContainerInstance/containerGroups

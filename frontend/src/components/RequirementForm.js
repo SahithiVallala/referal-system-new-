@@ -4,7 +4,13 @@ import { X, Save, FileText, Briefcase, Award, Users, MessageSquare, Calendar, Ch
 import API from '../utils/api';
 
 export default function RequirementForm({ contact, onDone }) {
-  const [log, setLog] = useState({ contacted_by: '', response: 'pending', follow_up_date: '', notes: '' });
+  const [log, setLog] = useState({ 
+    contacted_by: '', 
+    response: 'pending', 
+    contacted_at: new Date().toISOString().split('T')[0], // Default to today
+    follow_up_date: '', 
+    notes: '' 
+  });
   const [req, setReq] = useState({ role: '', experience: '', skills: '', openings: 1, description: '' });
   const [msg, setMsg] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -159,6 +165,21 @@ export default function RequirementForm({ contact, onDone }) {
                     onChange={(e) => setLog({ ...log, contacted_by: e.target.value })}
                     className="input-field"
                   />
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
+                    <Calendar className="w-4 h-4" />
+                    Contacted Date
+                  </label>
+                  <input
+                    type="date"
+                    value={log.contacted_at}
+                    onChange={(e) => setLog({ ...log, contacted_at: e.target.value })}
+                    className="input-field"
+                    required
+                  />
+                  <p className="text-xs text-slate-500 mt-1">You can customize the date when the contact was made</p>
                 </div>
 
                 <div>

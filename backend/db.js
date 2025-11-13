@@ -2,10 +2,37 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const dbFile = path.join(__dirname, 'tracker.db');
+// Use persistent storage path based on environment
+const getDbPath = () => {
+  if (process.env.NODE_ENV === 'production') {
+    // Production: Use mounted storage volume
+    const storageDir = process.env.DB_STORAGE_PATH || '/mnt/data';
+    
+    // Ensure storage directory exists
+    const fs = require('fs');
+    if (!fs.existsSync(storageDir)) {
+      fs.mkdirSync(storageDir, { recursive: true });
+    }
+    
+    return path.join(storageDir, 'tracker.db');
+  } else {
+    // Development: Use local directory
+    return path.join(__dirname, 'tracker.db');
+  }
+};
+
+const dbFile = getDbPath();
+console.log(`📁 Database location: ${dbFile}`);
+console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`⏰ Starting database connection at: ${new Date().toISOString()}`);
+
 const db = new sqlite3.Database(dbFile, (err) => {
-  if (err) console.error('Failed to connect to DB:', err.message);
-  else console.log('Connected to SQLite database.');
+  if (err) {
+    console.error('❌ Failed to connect to DB:', err.message);
+  } else {
+    console.log('✅ Connected to SQLite database successfully');
+    console.log(`⏰ Database connected at: ${new Date().toISOString()}`);
+  }
 });
 
 // Promisify db.run / db.get / db.all

@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - database-data:/mnt/data
+      - uploads-data:/app/uploads
+    restart: unless-stopped
+    
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  database-data:
+    driver: local
+    # For cloud storage, you can use different drivers:
+    # driver: azure-file-storage
+    # driver_opts:
+    #   share: jr-tracker-data
+    #   storage_account_name: your-storage-account
+    #   storage_account_key: your-storage-key
+  uploads-data:
+    driver: local
