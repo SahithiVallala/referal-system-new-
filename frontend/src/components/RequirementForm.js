@@ -4,12 +4,17 @@ import { X, Save, FileText, Briefcase, Award, Users, MessageSquare, Calendar, Ch
 import API from '../utils/api';
 
 export default function RequirementForm({ contact, onDone }) {
-  const [log, setLog] = useState({ 
-    contacted_by: '', 
-    response: 'pending', 
-    contacted_at: new Date().toISOString().split('T')[0], // Default to today
-    follow_up_date: '', 
-    notes: '' 
+  // Initialize log with existing data if available
+  const [log, setLog] = useState({
+    contacted_by: contact.latest_log?.contacted_by || '',
+    response: contact.latest_log?.response || 'pending',
+    contacted_at: contact.latest_log?.contacted_at
+      ? new Date(contact.latest_log.contacted_at).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0],
+    follow_up_date: contact.latest_log?.follow_up_date
+      ? new Date(contact.latest_log.follow_up_date).toISOString().split('T')[0]
+      : '',
+    notes: contact.latest_log?.notes || ''
   });
   const [req, setReq] = useState({ role: '', experience: '', skills: '', openings: 1, description: '' });
   const [msg, setMsg] = useState(null);

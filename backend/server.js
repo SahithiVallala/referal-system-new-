@@ -33,4 +33,13 @@ app.use('/api/contacts', contactsRoute);
 app.use('/api/requirements', reqRoute);
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server listening on ${PORT}`));
+
+// Add error handling for the server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server listening on ${PORT}`);
+  console.log(`⏰ Server started at: ${new Date().toISOString()}`);
+  console.log(`🌐 Health check available at: http://localhost:${PORT}/health`);
+}).on('error', (err) => {
+  console.error('❌ Server failed to start:', err);
+  process.exit(1);
+});

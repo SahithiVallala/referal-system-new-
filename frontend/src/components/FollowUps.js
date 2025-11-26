@@ -4,7 +4,7 @@ import { Bell, Calendar, User, Phone, Mail, Clock, AlertCircle, CheckCircle, X }
 import API from '../utils/api';
 import dayjs from 'dayjs';
 
-export default function FollowUps({ refreshTrigger, onDataChange }) {
+export default function FollowUps({ refreshTrigger, onDataChange, onFollowupsUpdate, showModal, onCloseModal }) {
   const [followups, setFollowups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showNotification, setShowNotification] = useState(false);
@@ -13,6 +13,13 @@ export default function FollowUps({ refreshTrigger, onDataChange }) {
   const [dismissedForToday, setDismissedForToday] = useState(false);
   const hasAutoShownRef = useRef(false);
 
+  // Show modal when requested from parent
+  useEffect(() => {
+    if (showModal) {
+      setShowNotification(true);
+    }
+  }, [showModal]);
+
   const loadFollowups = async (mode = 'auto', showSpinner = false) => {
     if (showSpinner) setLoading(true);
     try {
@@ -20,24 +27,25 @@ export default function FollowUps({ refreshTrigger, onDataChange }) {
         API.get('/contacts/followups/all'),
         API.get('/contacts/followups/pending')
       ]);
-      
+
       setFollowups(allRes.data);
       setDueToday(pendingRes.data);
-      
-      // Auto-open notification only if:
-      // - there are due items today
-      // - not dismissed for today
-      // - not already auto-shown in this session
-      // - mode is 'auto' (not 'silent')
-      if (
-        mode === 'auto' &&
-        pendingRes.data.length > 0 &&
-        !dismissedForToday &&
-        !hasAutoShownRef.current
-      ) {
-        setShowNotification(true);
-        hasAutoShownRef.current = true;
+
+      // Update parent with pending count
+      if (onFollowupsUpdate) {
+        onFollowupsUpdate(pendingRes.data.length);
       }
+      
+      // Disabled auto-popup - user must click notification bell to see follow-ups
+      // if (
+      //   mode === 'auto' &&
+      //   pendingRes.data.length > 0 &&
+      //   !dismissedForToday &&
+      //   !hasAutoShownRef.current
+      // ) {
+      //   setShowNotification(true);
+      //   hasAutoShownRef.current = true;
+      // }
     } catch (err) {
       console.error('Error loading follow-ups:', err);
     } finally {
@@ -119,6 +127,7 @@ export default function FollowUps({ refreshTrigger, onDataChange }) {
 
   const closeNotificationForToday = () => {
     setShowNotification(false);
+    if (onCloseModal) onCloseModal();
     const key = 'followups_notice_dismissed_date';
     const todayStr = dayjs().format('YYYY-MM-DD');
     try {
@@ -129,35 +138,43 @@ export default function FollowUps({ refreshTrigger, onDataChange }) {
     setDismissedForToday(true);
   };
 
+  // Only return the modal popup that slides from right
   return (
     <>
-      {/* Notification Popup for Due Today */}
+      {/* Notification Slide Panel from Right */}
       <AnimatePresence>
-        {showNotification && dueToday.length > 0 && (
+        {showNotification && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={closeNotificationForToday}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: -20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: -20 }}
-              className="fixed top-20 left-1/2 -translate-x-1/2 z-50 max-w-md w-full mx-4"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 h-full w-full max-w-md z-50 shadow-2xl"
             >
-              <div className="bg-white rounded-2xl shadow-2xl border-2 border-blue-200 overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-500 to-indigo-500 p-4">
-                  <div className="flex items-center justify-between">
+              <div className="bg-white h-full flex flex-col">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      <div className="bg-white p-2 rounded-lg">
-                        <Bell className="w-6 h-6 text-blue-600 animate-bounce" />
+                      <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+                        <Bell className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold text-white">Follow-up Reminders</h3>
-                        <p className="text-sm text-blue-100">{dueToday.length} contact{dueToday.length > 1 ? 's' : ''} need attention</p>
+                        <h3 className="text-lg font-bold text-white">Follow-up Center</h3>
+                        <p className="text-sm text-white/80">
+                          {dueToday.length > 0 
+                            ? `${dueToday.length} pending reminder${dueToday.length > 1 ? 's' : ''}`
+                            : '0 pending reminders'
+                          }
+                        </p>
                       </div>
                     </div>
                     <button
@@ -169,179 +186,86 @@ export default function FollowUps({ refreshTrigger, onDataChange }) {
                   </div>
                 </div>
 
-                <div className="max-h-96 overflow-y-auto p-4 space-y-3">
-                  {dueToday.map((followup) => (
-                    <motion.div
-                      key={followup.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="bg-blue-50 border border-blue-200 rounded-lg p-3"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-slate-900">{followup.name}</h4>
-                          <div className="mt-2 space-y-1 text-sm text-slate-600">
-                            {followup.phone && (
-                              <div className="flex items-center gap-2">
-                                <Phone className="w-3 h-3" />
-                                {followup.phone}
-                              </div>
-                            )}
-                            {followup.email && (
-                              <div className="flex items-center gap-2">
-                                <Mail className="w-3 h-3" />
-                                {followup.email}
-                              </div>
-                            )}
-                          </div>
-                          {followup.notes && (
-                            <p className="text-xs text-gray-500 mt-2 italic">"{followup.notes}"</p>
-                          )}
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
-                            {dayjs(followup.follow_up_date).isBefore(dayjs(), 'day') ? 'Overdue' : 'Today'}
-                          </span>
-                          <button
-                            onClick={() => handleComplete(followup.id)}
-                            disabled={completing === followup.id}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white p-1.5 rounded-lg transition-colors disabled:opacity-50"
-                            title="Mark as complete"
-                          >
-                            {completing === followup.id ? (
-                              <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
-                            ) : (
-                              <CheckCircle className="w-3 h-3" />
-                            )}
-                          </button>
-                        </div>
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6">
+                  {dueToday.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle className="w-10 h-10 text-green-600" />
                       </div>
-                    </motion.div>
-                  ))}
+                      <h4 className="text-lg font-bold text-gray-900 mb-2">You're all caught up!</h4>
+                      <p className="text-gray-600">No pending follow-ups for today.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {dueToday.map((followup) => (
+                        <motion.div
+                          key={followup.id}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 hover:shadow-md transition-all"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-slate-900 text-base mb-2">{followup.name}</h4>
+                              <div className="space-y-1.5 text-sm text-slate-600">
+                                {followup.phone && (
+                                  <div className="flex items-center gap-2">
+                                    <Phone className="w-4 h-4" />
+                                    {followup.phone}
+                                  </div>
+                                )}
+                                {followup.email && (
+                                  <div className="flex items-center gap-2">
+                                    <Mail className="w-4 h-4" />
+                                    {followup.email}
+                                  </div>
+                                )}
+                              </div>
+                              {followup.notes && (
+                                <p className="text-sm text-gray-600 mt-2 italic bg-white/60 p-2 rounded">"{followup.notes}"</p>
+                              )}
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">
+                                {dayjs(followup.follow_up_date).isBefore(dayjs(), 'day') ? 'Overdue' : 'Today'}
+                              </span>
+                              <button
+                                onClick={() => handleComplete(followup.id)}
+                                disabled={completing === followup.id}
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-lg transition-colors disabled:opacity-50"
+                                title="Mark as complete"
+                              >
+                                {completing === followup.id ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                ) : (
+                                  <CheckCircle className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                <div className="p-4 bg-slate-50 border-t border-slate-200">
-                  <button
-                    onClick={closeNotificationForToday}
-                    className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg hover:from-blue-600 hover:to-indigo-600 transition-all font-medium"
-                  >
-                    Got it!
-                  </button>
-                </div>
+                {/* Footer */}
+                {dueToday.length > 0 && (
+                  <div className="p-6 border-t border-gray-200 bg-gray-50">
+                    <button
+                      onClick={closeNotificationForToday}
+                      className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-medium shadow-md"
+                    >
+                      Close drawer
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
-
-      {/* Main Follow-ups List */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="card"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-500 p-3 rounded-xl relative">
-              <Calendar className="w-6 h-6 text-white" />
-              {dueToday.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {dueToday.length}
-                </span>
-              )}
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">Follow-ups</h2>
-              <p className="text-sm text-slate-500">{followups.length} scheduled</p>
-            </div>
-          </div>
-          {dueToday.length > 0 && (
-            <button
-              onClick={() => setShowNotification(true)}
-              className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2 font-medium"
-            >
-              <Bell className="w-4 h-4" />
-              {dueToday.length} Due
-            </button>
-          )}
-        </div>
-
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
-            <p className="text-slate-500 mt-4">Loading follow-ups...</p>
-          </div>
-        ) : followups.length === 0 ? (
-          <div className="text-center py-12">
-            <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500">No follow-ups scheduled</p>
-          </div>
-        ) : (
-          <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-2">
-            {followups.map((followup, index) => (
-              <motion.div
-                key={followup.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`border-2 rounded-xl p-4 hover:shadow-md transition-all ${getStatusColor(followup.follow_up_date)}`}
-              >
-                <div className="flex justify-between items-start gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <User className="w-4 h-4" />
-                      <h3 className="font-bold text-slate-900">{followup.name}</h3>
-                    </div>
-
-                    <div className="space-y-1 text-sm">
-                      {followup.phone && (
-                        <div className="flex items-center gap-2 text-slate-700">
-                          <Phone className="w-3 h-3" />
-                          {followup.phone}
-                        </div>
-                      )}
-                      {followup.email && (
-                        <div className="flex items-center gap-2 text-slate-700">
-                          <Mail className="w-3 h-3" />
-                          {followup.email}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 text-slate-700 font-medium">
-                        <Clock className="w-3 h-3" />
-                        {dayjs(followup.follow_up_date).format('MMM DD, YYYY')}
-                      </div>
-                    </div>
-
-                    {followup.notes && (
-                      <p className="text-sm text-slate-600 mt-2 italic">"{followup.notes}"</p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col items-end gap-2">
-                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/50">
-                      {getStatusLabel(followup.follow_up_date)}
-                    </span>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => handleComplete(followup.id)}
-                      disabled={completing === followup.id}
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Mark as complete"
-                    >
-                      {completing === followup.id ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      ) : (
-                        <CheckCircle className="w-4 h-4" />
-                      )}
-                    </motion.button>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </motion.div>
     </>
   );
 }

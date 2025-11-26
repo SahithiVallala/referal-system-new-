@@ -1,18 +1,19 @@
 import axios from 'axios';
 
-// Use deployed backend URL for production, localhost for development
+// Use environment variable for local development, fall back to /api for production
 const getApiUrl = () => {
-  // If running in production (deployed), use the deployed backend URL
-  if (window.location.hostname !== 'localhost') {
-    return 'https://referal-backend.reddesert-f6724e64.centralus.azurecontainerapps.io/api';
+  // Check if we have a custom API URL (for local development)
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
   }
-  // For local development, use localhost
-  return process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
+  // In unified container, nginx proxies /api/ to backend
+  // Use relative path so it works in any environment
+  return '/api';
 };
 
 const API = axios.create({ 
   baseURL: getApiUrl(),
-  timeout: 30000, // 30 second timeout for slower container startup
+  timeout: 60000, // 60 second timeout to handle Azure Container App cold starts
   headers: {
     'Content-Type': 'application/json'
   }

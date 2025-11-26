@@ -57,33 +57,37 @@ export default function Dashboard({ refreshTrigger }) {
       label: 'Total Contacts',
       value: contacts.length,
       icon: Users,
-      color: 'from-blue-500 to-blue-600',
-      bgColor: 'bg-blue-50',
-      textColor: 'text-blue-600'
+      color: 'text-blue-500',
+      bgColor: 'bg-gradient-to-br from-blue-50/80 to-blue-100/40',
+      iconBg: 'bg-gradient-to-br from-blue-400 to-blue-500',
+      borderColor: 'border-blue-100'
     },
     {
       label: 'Contacted',
       value: contacted.length,
       icon: CheckCircle,
-      color: 'from-emerald-500 to-emerald-600',
-      bgColor: 'bg-emerald-50',
-      textColor: 'text-emerald-600'
+      color: 'text-emerald-500',
+      bgColor: 'bg-gradient-to-br from-emerald-50/80 to-emerald-100/40',
+      iconBg: 'bg-gradient-to-br from-emerald-400 to-emerald-500',
+      borderColor: 'border-emerald-100'
     },
     {
       label: 'Has Requirements',
       value: hasRequirement.length,
       icon: FileText,
-      color: 'from-indigo-500 to-indigo-600',
-      bgColor: 'bg-indigo-50',
-      textColor: 'text-indigo-600'
+      color: 'text-purple-500',
+      bgColor: 'bg-gradient-to-br from-purple-50/80 to-purple-100/40',
+      iconBg: 'bg-gradient-to-br from-purple-400 to-purple-500',
+      borderColor: 'border-purple-100'
     },
     {
       label: 'Pending Follow-ups',
       value: pendingFollowups.length,
       icon: Clock,
-      color: 'from-purple-500 to-purple-600',
-      bgColor: 'bg-purple-50',
-      textColor: 'text-purple-600'
+      color: 'text-amber-500',
+      bgColor: 'bg-gradient-to-br from-amber-50/80 to-amber-100/40',
+      iconBg: 'bg-gradient-to-br from-amber-400 to-amber-500',
+      borderColor: 'border-amber-100'
     }
   ];
 
@@ -135,20 +139,6 @@ export default function Dashboard({ refreshTrigger }) {
       setClearing(false);
     }
   };
-
-  if (loading) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="card"
-      >
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-        </div>
-      </motion.div>
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -286,8 +276,58 @@ export default function Dashboard({ refreshTrigger }) {
           </>
         )}
       </AnimatePresence>
+      
+      {/* Dashboard Header */}
+      <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 border border-gray-100 shadow-sm">
+        <h3 className="text-sm font-medium text-gray-500 flex items-center gap-2">
+          <div className="w-1 h-5 bg-gradient-to-b from-blue-400 to-purple-400 rounded-full"></div>
+          Dashboard Overview
+        </h3>
+      </div>
+      
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+        </div>
+      ) : (
+        <>
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ scale: 1.02 }}
+                className={`${stat.bgColor} border ${stat.borderColor} rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-500 mb-2">{stat.label}</p>
+                    <p className={`text-3xl font-bold ${stat.color} transition-all duration-300 group-hover:scale-110`}>
+                      {stat.value}
+                    </p>
+                  </div>
+                  <div className={`${stat.iconBg} rounded-xl p-3 shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+                <div className="h-1.5 bg-white/60 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full ${stat.iconBg} rounded-full transition-all duration-500`}
+                    style={{ width: `${Math.min((stat.value / contacts.length) * 100 || 0, 100)}%` }}
+                  ></div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </>
+      )}
+      
+      {/* Stats Grid - OLD CODE BELOW THIS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ display: 'none' }}>
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -322,16 +362,16 @@ export default function Dashboard({ refreshTrigger }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="card"
+        className="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow duration-300"
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-500 p-3 rounded-xl">
-              <FileText className="w-6 h-6 text-white" />
+            <div className="bg-gradient-to-br from-indigo-400 to-indigo-500 p-2.5 rounded-lg shadow-sm">
+              <FileText className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-slate-900">Job Requirements</h3>
-              <p className="text-sm text-slate-500">{requirements.length} total requirements</p>
+              <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Job Requirements</h3>
+              <p className="text-xs text-gray-500">{requirements.length} total requirements</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -339,19 +379,19 @@ export default function Dashboard({ refreshTrigger }) {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowClearReqConfirm(true)}
-              className="px-3 py-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors flex items-center gap-2 text-sm font-medium"
+              className="px-2.5 py-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors flex items-center gap-1.5 text-xs font-medium"
               title="Clear all requirements"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={exportToExcel}
-              className="btn-primary flex items-center gap-2"
+              className="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-blue-500 text-white rounded-lg font-medium hover:from-indigo-600 hover:to-blue-600 transition-all duration-200 shadow-sm flex items-center gap-1.5 text-xs"
             >
-              <Download className="w-4 h-4" />
-              Export Excel
+              <Download className="w-3.5 h-3.5" />
+              Export
             </motion.button>
           </div>
         </div>
@@ -364,29 +404,29 @@ export default function Dashboard({ refreshTrigger }) {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="bg-gradient-to-r from-blue-50/50 to-white border border-blue-100 rounded-lg p-3 hover:shadow-md transition-all"
+                className="bg-gradient-to-r from-blue-50/50 to-indigo-50/30 border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-all hover:scale-[1.01]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <h4 className="font-semibold text-slate-900">{req.role}</h4>
-                    <p className="text-sm text-slate-600 mt-1">
+                    <h4 className="font-semibold text-slate-900 text-sm">{req.role}</h4>
+                    <p className="text-xs text-slate-600 mt-1">
                       {req.contact_name} @ {req.company}
                     </p>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
-                      {req.experience && <span className="badge-info">{req.experience}</span>}
-                      {req.openings && <span className="badge-success">{req.openings} openings</span>}
+                    <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                      {req.experience && <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full font-medium">{req.experience}</span>}
+                      {req.openings && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">{req.openings} openings</span>}
                     </div>
                   </div>
                   <button
                     onClick={() => handleDeleteRequirement(req.id)}
                     disabled={deletingReq === req.id}
-                    className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-2 rounded-lg transition-colors disabled:opacity-50"
+                    className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition-colors disabled:opacity-50"
                     title="Delete requirement"
                   >
                     {deletingReq === req.id ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-rose-500 border-t-transparent"></div>
+                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-rose-500 border-t-transparent"></div>
                     ) : (
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     )}
                   </button>
                 </div>

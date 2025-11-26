@@ -4,21 +4,11 @@ const path = require('path');
 
 // Use persistent storage path based on environment
 const getDbPath = () => {
-  if (process.env.NODE_ENV === 'production') {
-    // Production: Use mounted storage volume
-    const storageDir = process.env.DB_STORAGE_PATH || '/mnt/data';
-    
-    // Ensure storage directory exists
-    const fs = require('fs');
-    if (!fs.existsSync(storageDir)) {
-      fs.mkdirSync(storageDir, { recursive: true });
-    }
-    
-    return path.join(storageDir, 'tracker.db');
-  } else {
-    // Development: Use local directory
-    return path.join(__dirname, 'tracker.db');
-  }
+  // For now, use local storage to avoid Azure File mount issues
+  // This will be stored in the container's local filesystem
+  const dbPath = path.join(__dirname, 'tracker.db');
+  console.log(`📁 Using database path: ${dbPath}`);
+  return dbPath;
 };
 
 const dbFile = getDbPath();

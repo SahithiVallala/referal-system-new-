@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Search, Phone, Mail, User, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Users, Search, Phone, Mail, User, Clock, CheckCircle, XCircle, AlertCircle, Bell } from 'lucide-react';
 import API from '../utils/api';
 import RequirementForm from './RequirementForm';
 
-export default function ContactList({ refreshTrigger, onDataChange }) {
+export default function ContactList({ refreshTrigger, onDataChange, notificationCount = 0, onNotificationClick }) {
   const [contacts, setContacts] = useState([]);
   const [selected, setSelected] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,45 +67,66 @@ export default function ContactList({ refreshTrigger, onDataChange }) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="card"
+        className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-100 shadow-lg overflow-hidden"
       >
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-500 p-3 rounded-xl">
-              <Users className="w-6 h-6 text-white" />
+        {/* Header with gradient background */}
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/30 backdrop-blur-sm rounded-xl p-2.5">
+                <Users className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Contact Management</h2>
+                <p className="text-sm text-white/80">{filteredContacts.length} total contacts</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">Contacts</h2>
-              <p className="text-sm text-slate-500">{filteredContacts.length} contacts</p>
-            </div>
+            
+            {/* Follow-up Notification Button */}
+            {notificationCount > 0 && (
+              <button
+                onClick={onNotificationClick}
+                className="bg-white/30 backdrop-blur-sm hover:bg-white/40 text-white px-4 py-2.5 rounded-xl transition-all duration-200 flex items-center gap-2 border border-white/30 shadow-sm"
+              >
+                <div className="relative">
+                  <Bell className="h-4 w-4" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-300 rounded-full animate-pulse"></span>
+                </div>
+                <span className="font-medium">
+                  {notificationCount} Reminder{notificationCount !== 1 ? 's' : ''}
+                </span>
+              </button>
+            )}
           </div>
-        </div>
-
-        {/* Search and Filter */}
-        <div className="mb-4 space-y-3">
+          
+          {/* Search Bar inside gradient header */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
               placeholder="Search by name, email, or company..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field pl-10"
+              className="w-full pl-12 pr-4 py-3 bg-white/95 backdrop-blur-sm border-white/30 rounded-xl shadow-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
             />
           </div>
+        </div>
 
+        {/* Filter Section */}
+        <div className="bg-gradient-to-r from-gray-50/80 to-blue-50/50 p-6 border-b border-gray-100">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1 h-5 bg-gradient-to-b from-purple-400 to-purple-500 rounded-full"></div>
+            <span className="text-sm font-medium text-gray-500">Filter by Category</span>
+          </div>
           <div className="flex gap-2 flex-wrap">
             {['all', 'contacted', 'not_contacted', 'has_requirement', 'no_requirement'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
-                className={
-                  `px-4 py-2 rounded-lg text-sm font-medium transition-all
-                  ${
-                    filterStatus === status
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }
+                className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  filterStatus === status
+                    ? 'bg-gradient-to-r from-blue-400 to-purple-400 text-white shadow-md shadow-blue-400/30 scale-105'
+                    : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100 hover:border-blue-200 hover:shadow-sm'
                 }`}
               >
                 {status.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
@@ -114,31 +135,39 @@ export default function ContactList({ refreshTrigger, onDataChange }) {
           </div>
         </div>
 
-        {/* Contacts List */}
-        <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-2">
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
-              <p className="text-slate-500 mt-4">Loading contacts...</p>
-            </div>
-          ) : filteredContacts.length === 0 ? (
-            <div className="text-center py-12">
-              <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500">No contacts found</p>
-            </div>
-          ) : (
-            filteredContacts.map((c, index) => (
-              <motion.div
-                key={c.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                whileHover={{ scale: 1.01 }}
-                className="bg-gradient-to-r from-white to-blue-50/30 border border-gray-200 rounded-xl p-4 hover:shadow-md transition-all cursor-pointer"
-                onClick={() => setSelected(c)}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 space-y-2">
+        {/* Contacts Table Section */}
+        <div className="p-6 bg-white">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-1 h-5 bg-gradient-to-b from-blue-400 to-blue-500 rounded-full"></div>
+            <span className="text-sm font-medium text-gray-500">
+              {filteredContacts.length} Contact{filteredContacts.length !== 1 ? 's' : ''} Found
+            </span>
+          </div>
+          
+          <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-2">
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
+                <p className="text-slate-500 mt-4">Loading contacts...</p>
+              </div>
+            ) : filteredContacts.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-500">No contacts found</p>
+              </div>
+            ) : (
+              filteredContacts.map((c, index) => (
+                <motion.div
+                  key={c.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ scale: 1.01 }}
+                  className="bg-gradient-to-r from-white to-blue-50/30 border border-gray-200 rounded-xl p-4 hover:shadow-md transition-all cursor-pointer"
+                  onClick={() => setSelected(c)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 space-y-2">
                     {/* Name with Person Icon */}
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
@@ -181,14 +210,15 @@ export default function ContactList({ refreshTrigger, onDataChange }) {
                     )}
                   </div>
                   
-                  {/* Status Badge */}
-                  <div className="ml-4">
-                    {getStatusBadge(c)}
+                    {/* Status Badge */}
+                    <div className="ml-4">
+                      {getStatusBadge(c)}
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))
-          )}
+                </motion.div>
+              ))
+            )}
+          </div>
         </div>
       </motion.div>
 

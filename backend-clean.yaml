@@ -1,0 +1,31 @@
+location: centralus
+name: referal-backend-clean
+properties:
+  managedEnvironmentId: /subscriptions/f2ecab04-e566-4faf-9854-f661e981188e/resourceGroups/TECHGENE_group/providers/Microsoft.App/managedEnvironments/email-automation-env
+  configuration:
+    activeRevisionsMode: Single
+    ingress:
+      external: true
+      targetPort: 4000
+      transport: auto
+      traffic:
+      - weight: 100
+        latestRevision: true
+    registries:
+    - server: emailautomation22833.azurecr.io
+      username: emailautomation22833
+  template:
+    containers:
+    - image: emailautomation22833.azurecr.io/referal-backend:latest
+      name: referal-backend
+      resources:
+        cpu: 0.5
+        memory: 1Gi
+      env:
+      - name: NODE_ENV
+        value: production
+    scale:
+      minReplicas: 1
+      maxReplicas: 3
+resourceGroup: TECHGENE_group
+type: Microsoft.App/containerApps
