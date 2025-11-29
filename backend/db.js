@@ -7,21 +7,22 @@ const getDbPath = () => {
   // For now, use local storage to avoid Azure File mount issues
   // This will be stored in the container's local filesystem
   const dbPath = path.join(__dirname, 'tracker.db');
-  console.log(`📁 Using database path: ${dbPath}`);
+  // Reduce logging - only log in verbose mode
+  if (process.env.VERBOSE === 'true') {
+    console.log(`📁 Using database path: ${dbPath}`);
+  }
   return dbPath;
 };
 
 const dbFile = getDbPath();
-console.log(`📁 Database location: ${dbFile}`);
-console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-console.log(`⏰ Starting database connection at: ${new Date().toISOString()}`);
-
 const db = new sqlite3.Database(dbFile, (err) => {
   if (err) {
-    console.error('❌ Failed to connect to DB:', err.message);
+    console.error('❌ Failed to connect to SQLite:', err.message);
   } else {
-    console.log('✅ Connected to SQLite database successfully');
-    console.log(`⏰ Database connected at: ${new Date().toISOString()}`);
+    // Only log success, not timestamp details
+    if (process.env.VERBOSE === 'true') {
+      console.log('✅ Connected to SQLite database');
+    }
   }
 });
 

@@ -36,9 +36,13 @@ const PORT = process.env.PORT || 4000;
 
 // Add error handling for the server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server listening on ${PORT}`);
-  console.log(`⏰ Server started at: ${new Date().toISOString()}`);
-  console.log(`🌐 Health check available at: http://localhost:${PORT}/health`);
+  console.log('\n' + '='.repeat(50));
+  console.log('📊 APP BACKEND STARTED');
+  console.log('='.repeat(50));
+  console.log(`📡 Port: ${PORT}`);
+  console.log(`🗄️  Database: SQLite (tracker.db)`);
+  console.log(`🌐 Health: http://localhost:${PORT}/health`);
+  console.log('='.repeat(50) + '\n');
 }).on('error', (err) => {
   console.error('❌ Server failed to start:', err);
   process.exit(1);

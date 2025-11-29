@@ -19,14 +19,16 @@ const API = axios.create({
   }
 });
 
-// Add request interceptor for debugging
+// Add request interceptor - only log errors
 API.interceptors.request.use(
   (config) => {
-    console.log(`Making ${config.method?.toUpperCase()} request to: ${config.baseURL}${config.url}`);
+    // Only log in development if needed for debugging
+    // Uncomment next line to see all requests:
+    // console.log(`${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
     return config;
   },
   (error) => {
-    console.error('Request error:', error);
+    console.error('❌ Request error:', error);
     return Promise.reject(error);
   }
 );
