@@ -7,6 +7,12 @@ const multer = require('multer');
 const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs');
+const authCtrl = require('../controllers/authController');
+const { logActivity } = require('../utils/activityLogger');
+const blobStorage = require('../blobStorage');
+
+// Note: Authentication applied selectively to routes that modify data
+// GET routes remain public for viewing data
 
 // Configure multer for file uploads
 const upload = multer({ 
@@ -38,6 +44,24 @@ router.post('/', async (req, res) => {
     );
 
     const contact = await get('SELECT * FROM contacts WHERE id = ?', [id]);
+
+    // Log activity - Disabled (no authentication)
+    // if (req.user) {
+    //   await logActivity({
+    //     userId: req.user.id,
+    //     userName: req.user.name || 'Unknown',
+    //     userEmail: req.user.email || 'Unknown',
+    //     actionType: 'ADD_CONTACT',
+    //     actionDescription: `Added new contact: ${name}`,
+    //     contactId: id,
+    //     contactName: name,
+    //     metadata: { company, designation }
+    //   });
+    // }
+
+    // Sync database to blob storage
+    await blobStorage.manualSync();
+    
     res.json({ existing: false, contact });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -126,6 +150,48 @@ router.delete('/imports/:id', async (req, res) => {
   }
 });
 
+// Delete a single contact by ID
+router.delete('/:id', async (req, res) => {
+  try {
+    const contactId = req.params.id;
+
+    // Get contact info before deleting
+    const contact = await get('SELECT * FROM contacts WHERE id = ?', [contactId]);
+
+    // Delete related data first
+    await run('DELETE FROM contact_logs WHERE contact_id = ?', [contactId]);
+    await run('DELETE FROM requirements WHERE contact_id = ?', [contactId]);
+
+    // Delete the contact
+    const result = await run('DELETE FROM contacts WHERE id = ?', [contactId]);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Contact not found' });
+    }
+
+    // Log activity - Disabled (no authentication)
+    // if (req.user && contact) {
+    //   await logActivity({
+    //     userId: req.user.id,
+    //     userName: req.user.name || 'Unknown',
+    //     userEmail: req.user.email || 'Unknown',
+    //     actionType: 'DELETE_CONTACT',
+    //     actionDescription: `Deleted contact: ${contact.name}`,
+    //     contactId,
+    //     contactName: contact.name,
+    //     metadata: { email: contact.email, phone: contact.phone }
+    //   });
+    // }
+
+    // Sync database to blob storage
+    await blobStorage.manualSync();
+    
+    res.json({ message: 'Contact deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Clear all contacts (for testing/reset)
 router.delete('/clear-all', async (req, res) => {
   try {
@@ -133,6 +199,10 @@ router.delete('/clear-all', async (req, res) => {
     await run('DELETE FROM requirements');
     await run('DELETE FROM contacts');
     await run('DELETE FROM imports');
+    
+    // Sync database to blob storage
+    await blobStorage.manualSync();
+    
     res.json({ message: 'All contacts, logs, requirements, and imports cleared' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -395,6 +465,26 @@ router.post('/import', upload.single('file'), async (req, res) => {
       throw err;
     }
 
+    // Log activity - Disabled (no authentication)
+    // if (req.user) {
+    //   await logActivity({
+    //     userId: req.user.id,
+    //     userName: req.user.name || 'Unknown',
+    //     userEmail: req.user.email || 'Unknown',
+    //     actionType: 'IMPORT_CONTACTS',
+    //     actionDescription: `Imported ${results.added} contacts from ${req.file.originalname}`,
+    //     metadata: {
+    //       filename: req.file.originalname,
+    //       added: results.added,
+    //       skipped: results.skipped,
+    //       importId
+    //     }
+    //   });
+    // }
+
+    // Sync database to blob storage after import
+    await blobStorage.manualSync();
+
     // Clean up uploaded file (with delay to avoid EBUSY error)
     setTimeout(() => {
       try {
@@ -515,6 +605,22 @@ router.post('/:id/log', async (req, res) => {
     );
 
     const log = await get('SELECT * FROM contact_logs WHERE id = ?', [id]);
+
+    // Log activity - Disabled (no authentication)
+    // const contact = await get('SELECT * FROM contacts WHERE id = ?', [contact_id]);
+    // if (contact) {
+    //   await logActivity({
+    //     userId: req.user.id,
+    //     userName: req.user.name || 'Unknown',
+    //     userEmail: req.user.email || 'Unknown',
+    //     actionType: 'CONTACT_LOG',
+    //     actionDescription: `Contacted ${contact.name} - Response: ${response || 'pending'}`,
+    //     contactId: contact_id,
+    //     contactName: contact.name,
+    //     metadata: { response, follow_up_date, contacted_by }
+    //   });
+    // }
+
     res.json(log);
   } catch (err) {
     res.status(500).json({ error: err.message });

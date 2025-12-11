@@ -1,6 +1,6 @@
 # Unified Dockerfile - Frontend + Backend in one container
 # Stage 1: Build frontend
-FROM node:18-alpine AS frontend-build
+FROM node:20-alpine AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci --only=production
@@ -8,7 +8,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Final image with backend and built frontend
-FROM node:18-alpine
+FROM node:20-alpine
 WORKDIR /app
 
 # Install nginx for serving frontend and proxying
@@ -18,14 +18,14 @@ RUN apk add --no-cache nginx
 COPY backend/package*.json ./backend/
 WORKDIR /app/backend
 
-# Install build dependencies for native modules
-RUN apk add --no-cache python3 make g++
+# Install build dependencies for native modules (including py3-setuptools for distutils)
+RUN apk add --no-cache python3 make g++ py3-setuptools
 
 # Install dependencies and rebuild native modules for Alpine
 RUN npm ci --only=production && npm rebuild sqlite3
 
 # Remove build dependencies to keep image small
-RUN apk del python3 make g++
+RUN apk del python3 make g++ py3-setuptools
 
 COPY backend/ ./
 RUN mkdir -p uploads
@@ -34,34 +34,32 @@ RUN mkdir -p uploads
 COPY --from=frontend-build /app/frontend/build /app/frontend/build
 
 # Create nginx configuration
-RUN mkdir -p /etc/nginx/http.d
-COPY <<EOF /etc/nginx/http.d/default.conf
-server {
-    listen 80;
-    server_name _;
-    
-    # Serve frontend
-    root /app/frontend/build;
-    index index.html;
-    
-    # Handle React Router
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-    
-    # Proxy API requests to backend
-    location /api/ {
-        proxy_pass http://localhost:4000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    }
-}
-EOF
+RUN mkdir -p /etc/nginx/http.d && \
+    echo 'server {' > /etc/nginx/http.d/default.conf && \
+    echo '    listen 80;' >> /etc/nginx/http.d/default.conf && \
+    echo '    server_name _;' >> /etc/nginx/http.d/default.conf && \
+    echo '    ' >> /etc/nginx/http.d/default.conf && \
+    echo '    # Serve frontend' >> /etc/nginx/http.d/default.conf && \
+    echo '    root /app/frontend/build;' >> /etc/nginx/http.d/default.conf && \
+    echo '    index index.html;' >> /etc/nginx/http.d/default.conf && \
+    echo '    ' >> /etc/nginx/http.d/default.conf && \
+    echo '    # Handle React Router' >> /etc/nginx/http.d/default.conf && \
+    echo '    location / {' >> /etc/nginx/http.d/default.conf && \
+    echo '        try_files $uri $uri/ /index.html;' >> /etc/nginx/http.d/default.conf && \
+    echo '    }' >> /etc/nginx/http.d/default.conf && \
+    echo '    ' >> /etc/nginx/http.d/default.conf && \
+    echo '    # Proxy API requests to backend' >> /etc/nginx/http.d/default.conf && \
+    echo '    location /api/ {' >> /etc/nginx/http.d/default.conf && \
+    echo '        proxy_pass http://localhost:4000;' >> /etc/nginx/http.d/default.conf && \
+    echo '        proxy_http_version 1.1;' >> /etc/nginx/http.d/default.conf && \
+    echo '        proxy_set_header Upgrade $http_upgrade;' >> /etc/nginx/http.d/default.conf && \
+    echo '        proxy_set_header Connection '\''upgrade'\'';' >> /etc/nginx/http.d/default.conf && \
+    echo '        proxy_set_header Host $host;' >> /etc/nginx/http.d/default.conf && \
+    echo '        proxy_cache_bypass $http_upgrade;' >> /etc/nginx/http.d/default.conf && \
+    echo '        proxy_set_header X-Real-IP $remote_addr;' >> /etc/nginx/http.d/default.conf && \
+    echo '        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;' >> /etc/nginx/http.d/default.conf && \
+    echo '    }' >> /etc/nginx/http.d/default.conf && \
+    echo '}' >> /etc/nginx/http.d/default.conf
 
 # Create startup script
 RUN echo '#!/bin/sh' > /app/start.sh && \

@@ -1,28 +1,21 @@
 // backend/db.js
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const blobStorage = require('./blobStorage');
 
-// Use persistent storage path based on environment
-const getDbPath = () => {
-  // For now, use local storage to avoid Azure File mount issues
-  // This will be stored in the container's local filesystem
-  const dbPath = path.join(__dirname, 'tracker.db');
-  // Reduce logging - only log in verbose mode
-  if (process.env.VERBOSE === 'true') {
-    console.log(`📁 Using database path: ${dbPath}`);
-  }
-  return dbPath;
-};
+// Always use local path - blob storage handles persistence
+const dbFile = path.join(__dirname, 'tracker.db');
 
-const dbFile = getDbPath();
-const db = new sqlite3.Database(dbFile, (err) => {
+const db = new sqlite3.Database(dbFile, async (err) => {
   if (err) {
     console.error('❌ Failed to connect to SQLite:', err.message);
   } else {
-    // Only log success, not timestamp details
     if (process.env.VERBOSE === 'true') {
       console.log('✅ Connected to SQLite database');
     }
+    
+    // Initialize blob storage sync
+    await blobStorage.initialize();
   }
 });
 
@@ -50,6 +43,17 @@ const all = (sql, params=[]) => new Promise((resolve, reject) => {
 
 // Initialize tables
 (async () => {
+  // Create users table for authentication
+  await run(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    role TEXT DEFAULT 'user',
+    isActive INTEGER DEFAULT 1,
+    createdAt TEXT
+  )`);
+
   // Create imports table to track Excel file imports
   await run(`CREATE TABLE IF NOT EXISTS imports (
     id TEXT PRIMARY KEY,
@@ -91,6 +95,41 @@ const all = (sql, params=[]) => new Promise((resolve, reject) => {
     openings INTEGER,
     description TEXT,
     created_at TEXT
+  )`);
+
+  // Create user_activities table to track user actions
+  await run(`CREATE TABLE IF NOT EXISTS user_activities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    user_name TEXT,
+    user_email TEXT,
+    action_type TEXT NOT NULL,
+    action_description TEXT,
+    contact_id TEXT,
+    contact_name TEXT,
+    metadata TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )`);
+
+  // Create audit_logs table to track admin actions
+  await run(`CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    admin_id INTEGER NOT NULL,
+    admin_name TEXT,
+    admin_email TEXT,
+    admin_role TEXT,
+    action_type TEXT NOT NULL,
+    action_description TEXT,
+    target_user_id INTEGER,
+    target_user_name TEXT,
+    target_user_email TEXT,
+    old_value TEXT,
+    new_value TEXT,
+    metadata TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (admin_id) REFERENCES users(id),
+    FOREIGN KEY (target_user_id) REFERENCES users(id)
   )`);
 
   // Migration: Add follow-up completion columns if they don't exist

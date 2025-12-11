@@ -1,9 +1,15 @@
 // backend/routes/requirements.js
 const express = require('express');
 const router = express.Router();
-const { run, all } = require('../db');
+const { run, all, get } = require('../db');
 const { v4: uuidv4 } = require('uuid');
 const ExcelJS = require('exceljs');
+const authCtrl = require('../controllers/authController');
+const { logActivity } = require('../utils/activityLogger');
+const blobStorage = require('../blobStorage');
+
+// Note: Authentication applied selectively to routes that modify data
+// GET routes remain public for viewing data
 
 // Get all requirements
 router.get('/', async (req, res) => {
@@ -35,6 +41,25 @@ router.post('/', async (req, res) => {
     );
 
     const rows = await all('SELECT * FROM requirements WHERE id = ?', [id]);
+
+    // Log activity - Disabled (no authentication)
+    // const contact = await get('SELECT * FROM contacts WHERE id = ?', [contact_id]);
+    // if (req.user && contact) {
+    //   await logActivity({
+    //     userId: req.user.id,
+    //     userName: req.user.name || 'Unknown',
+    //     userEmail: req.user.email || 'Unknown',
+    //     actionType: 'ADD_REQUIREMENT',
+    //     actionDescription: `Added requirement for ${role} at ${contact.company || contact.name}`,
+    //     contactId: contact_id,
+    //     contactName: contact.name,
+    //     metadata: { role, experience, skills, openings }
+    //   });
+    // }
+
+    // Sync database to blob storage
+    await blobStorage.manualSync();
+    
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -70,6 +95,18 @@ router.get('/export', async (req, res) => {
     ];
 
     rows.forEach(r => sheet.addRow(r));
+
+    // Log activity - Disabled (no authentication)
+    // if (req.user) {
+    //   await logActivity({
+    //     userId: req.user.id,
+    //     userName: req.user.name || 'Unknown',
+    //     userEmail: req.user.email || 'Unknown',
+    //     actionType: 'EXPORT_REQUIREMENTS',
+    //     actionDescription: `Exported ${rows.length} requirements to Excel`,
+    //     metadata: { count: rows.length }
+    //   });
+    // }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=requirements.xlsx');

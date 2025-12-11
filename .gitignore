@@ -1,0 +1,40 @@
+# Node modules
+node_modules/
+*/node_modules/
+
+# Build outputs
+frontend/build/
+*/build/
+
+# Cache directories
+.cache/
+*/.cache/
+
+# Database files
+*.db
+tracker.db
+backend/tracker.db
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+nul
+*.tmp

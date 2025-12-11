@@ -9,6 +9,7 @@
     "dev-memory": "nodemon index-memory.js"
   },
   "dependencies": {
+    "@azure/storage-blob": "^12.29.1",
     "bcrypt": "^6.0.0",
     "body-parser": "^1.20.3",
     "cookie-parser": "^1.4.7",
