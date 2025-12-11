@@ -81,11 +81,11 @@ export default function FollowUps({ refreshTrigger, onDataChange, onFollowupsUpd
   const getStatusColor = (date) => {
     const today = dayjs().startOf('day');
     const followUpDate = dayjs(date).startOf('day');
-    
+
     if (followUpDate.isBefore(today)) {
       return 'bg-red-50 text-red-700 border-red-200';
     } else if (followUpDate.isSame(today)) {
-      return 'bg-blue-50 text-blue-700 border-blue-200';
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
     } else {
       return 'bg-gray-50 text-gray-700 border-gray-200';
     }
@@ -161,25 +161,25 @@ export default function FollowUps({ refreshTrigger, onDataChange, onFollowupsUpd
             >
               <div className="bg-white h-full flex flex-col">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
+                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+                      <div className="bg-white/20 backdrop-blur-sm p-2.5 rounded-xl">
                         <Bell className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-white">Follow-up Center</h3>
-                        <p className="text-sm text-white/80">
+                        <h3 className="text-xl font-bold text-white">Follow-up Center</h3>
+                        <p className="text-sm text-white/90 font-medium">
                           {dueToday.length > 0 
                             ? `${dueToday.length} pending reminder${dueToday.length > 1 ? 's' : ''}`
-                            : '0 pending reminders'
+                            : 'All caught up!'
                           }
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={closeNotificationForToday}
-                      className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors"
+                      className="text-white/90 hover:bg-white/20 p-2 rounded-lg transition-colors"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -187,77 +187,93 @@ export default function FollowUps({ refreshTrigger, onDataChange, onFollowupsUpd
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
                   {dueToday.length === 0 ? (
                     <div className="text-center py-12">
-                      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle className="w-10 h-10 text-green-600" />
+                      <div className="w-20 h-20 bg-gradient-to-br from-emerald-100 to-green-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <CheckCircle className="w-10 h-10 text-emerald-600" />
                       </div>
                       <h4 className="text-lg font-bold text-gray-900 mb-2">You're all caught up!</h4>
-                      <p className="text-gray-600">No pending follow-ups for today.</p>
+                      <p className="text-sm text-gray-600">No pending follow-ups for today.</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {dueToday.map((followup) => (
+                      {dueToday.map((followup) => {
+                        const isOverdue = dayjs(followup.follow_up_date).isBefore(dayjs(), 'day');
+                        return (
                         <motion.div
                           key={followup.id}
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
-                          className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 hover:shadow-md transition-all"
+                          className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-all duration-300"
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-slate-900 text-base mb-2">{followup.name}</h4>
-                              <div className="space-y-1.5 text-sm text-slate-600">
+                          <div className="flex gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-3">
+                                <h4 className="font-bold text-gray-900 text-base truncate">{followup.name}</h4>
+                                {isOverdue && (
+                                  <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-md font-semibold flex-shrink-0">Overdue</span>
+                                )}
+                              </div>
+                              
+                              <div className="space-y-2 text-sm text-gray-600">
                                 {followup.phone && (
                                   <div className="flex items-center gap-2">
-                                    <Phone className="w-4 h-4" />
-                                    {followup.phone}
+                                    <Phone className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                    <span className="truncate">{followup.phone}</span>
                                   </div>
                                 )}
                                 {followup.email && (
                                   <div className="flex items-center gap-2">
-                                    <Mail className="w-4 h-4" />
-                                    {followup.email}
+                                    <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                    <span className="truncate">{followup.email}</span>
                                   </div>
                                 )}
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                  <span className="font-medium">
+                                    {dayjs(followup.follow_up_date).format('MMM D, YYYY')}
+                                  </span>
+                                </div>
                               </div>
+                              
                               {followup.notes && (
-                                <p className="text-sm text-gray-600 mt-2 italic bg-white/60 p-2 rounded">"{followup.notes}"</p>
+                                <div className="bg-gray-50 mt-3 p-3 rounded-lg border border-gray-100">
+                                  <p className="text-sm text-gray-700 italic break-words whitespace-pre-wrap leading-relaxed">"{followup.notes}"</p>
+                                </div>
                               )}
                             </div>
-                            <div className="flex flex-col items-end gap-2">
-                              <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">
-                                {dayjs(followup.follow_up_date).isBefore(dayjs(), 'day') ? 'Overdue' : 'Today'}
-                              </span>
+                            
+                            <div className="flex-shrink-0 self-start ml-2">
                               <button
                                 onClick={() => handleComplete(followup.id)}
                                 disabled={completing === followup.id}
-                                className="bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-lg transition-colors disabled:opacity-50"
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white p-2.5 rounded-lg transition-colors disabled:opacity-50 w-10 h-10 flex items-center justify-center"
                                 title="Mark as complete"
                               >
                                 {completing === followup.id ? (
-                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                                 ) : (
-                                  <CheckCircle className="w-4 h-4" />
+                                  <CheckCircle className="w-5 h-5" />
                                 )}
                               </button>
                             </div>
                           </div>
                         </motion.div>
-                      ))}
+                      );
+                      })}
                     </div>
                   )}
                 </div>
 
                 {/* Footer */}
                 {dueToday.length > 0 && (
-                  <div className="p-6 border-t border-gray-200 bg-gray-50">
+                  <div className="p-6 border-t-2 border-gray-200 bg-white">
                     <button
                       onClick={closeNotificationForToday}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-medium shadow-md"
+                      className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl hover:from-indigo-700 hover:to-blue-700 transition-all font-semibold shadow-lg hover:shadow-xl"
                     >
-                      Close drawer
+                      Close Notifications
                     </button>
                   </div>
                 )}

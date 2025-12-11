@@ -92,7 +92,11 @@ export default function Dashboard({ refreshTrigger }) {
   ];
 
   const exportToExcel = () => {
-    window.open('http://localhost:4000/api/requirements/export', '_blank');
+    // Use relative path for production, localhost for development
+    const exportUrl = process.env.NODE_ENV === 'production' 
+      ? '/api/requirements/export' 
+      : 'http://localhost:5001/api/requirements/export';
+    window.open(exportUrl, '_blank');
   };
 
   const handleClearAll = async () => {
