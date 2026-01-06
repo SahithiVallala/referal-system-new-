@@ -67,18 +67,18 @@ export default function ContactList({ refreshTrigger, onDataChange, notification
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-100 shadow-lg overflow-hidden"
+        className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
       >
         {/* Header with gradient background */}
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6">
+        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="bg-white/30 backdrop-blur-sm rounded-xl p-2.5">
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-2.5 shadow-md">
                 <Users className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">Contact Management</h2>
-                <p className="text-sm text-white/80">{filteredContacts.length} total contacts</p>
+                <h2 className="text-xl font-semibold text-gray-800">Contact Management</h2>
+                <p className="text-sm text-gray-500">Viewing {filteredContacts.length} total contact{filteredContacts.length !== 1 ? 's' : ''}</p>
               </div>
             </div>
             
@@ -86,15 +86,14 @@ export default function ContactList({ refreshTrigger, onDataChange, notification
             {notificationCount > 0 && (
               <button
                 onClick={onNotificationClick}
-                className="bg-white/30 backdrop-blur-sm hover:bg-white/40 text-white px-4 py-2.5 rounded-xl transition-all duration-200 flex items-center gap-2 border border-white/30 shadow-sm"
+                className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl transition-all duration-200 flex items-center gap-2 border border-gray-200 shadow-sm hover:shadow-md"
               >
                 <div className="relative">
-                  <Bell className="h-4 w-4" />
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-300 rounded-full animate-pulse"></span>
+                  <Bell className="h-4 w-4 text-indigo-600" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-pulse shadow-sm"></span>
                 </div>
-                <span className="font-medium">
-                  {notificationCount} Reminder{notificationCount !== 1 ? 's' : ''}
-                </span>
+                <span className="font-medium">Today's Follow-Ups</span>
+                <span className="ml-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">{notificationCount}</span>
               </button>
             )}
           </div>
@@ -107,26 +106,26 @@ export default function ContactList({ refreshTrigger, onDataChange, notification
               placeholder="Search by name, email, or company..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white/95 backdrop-blur-sm border-white/30 rounded-xl shadow-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+              className="w-full pl-12 pr-4 py-3 bg-white border-gray-300 rounded-xl shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all text-sm"
             />
           </div>
         </div>
 
         {/* Filter Section */}
-        <div className="bg-gradient-to-r from-gray-50/80 to-blue-50/50 p-6 border-b border-gray-100">
+        <div className="bg-white border-b border-gray-200 p-6">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-1 h-5 bg-gradient-to-b from-purple-400 to-purple-500 rounded-full"></div>
-            <span className="text-sm font-medium text-gray-500">Filter by Category</span>
+            <div className="w-1 h-5 bg-gradient-to-b from-indigo-500 to-indigo-600 rounded-full"></div>
+            <span className="text-sm font-medium text-gray-700">Filter by Category</span>
           </div>
           <div className="flex gap-2 flex-wrap">
             {['all', 'contacted', 'not_contacted', 'has_requirement', 'no_requirement'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
-                className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   filterStatus === status
-                    ? 'bg-gradient-to-r from-blue-400 to-purple-400 text-white shadow-md shadow-blue-400/30 scale-105'
-                    : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100 hover:border-blue-200 hover:shadow-sm'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 hover:bg-indigo-700'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent hover:border-gray-300'
                 }`}
               >
                 {status.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
@@ -136,24 +135,29 @@ export default function ContactList({ refreshTrigger, onDataChange, notification
         </div>
 
         {/* Contacts Table Section */}
-        <div className="p-6 bg-white">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-5 bg-gradient-to-b from-blue-400 to-blue-500 rounded-full"></div>
-            <span className="text-sm font-medium text-gray-500">
-              {filteredContacts.length} Contact{filteredContacts.length !== 1 ? 's' : ''} Found
-            </span>
+        <div className="p-6 bg-gray-50">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-5 bg-gradient-to-b from-indigo-500 to-indigo-600 rounded-full"></div>
+              <span className="text-sm font-medium text-gray-700">
+                {filteredContacts.length} Contact{filteredContacts.length !== 1 ? 's' : ''} Found
+              </span>
+            </div>
           </div>
           
           <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-2">
             {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
-                <p className="text-slate-500 mt-4">Loading contacts...</p>
+              <div className="text-center py-16 bg-white rounded-xl border-2 border-dashed border-gray-300">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mx-auto"></div>
+                <p className="text-gray-600 mt-4 font-medium">Loading contacts...</p>
               </div>
             ) : filteredContacts.length === 0 ? (
-              <div className="text-center py-12">
-                <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500">No contacts found</p>
+              <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-300">
+                <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-full flex items-center justify-center mb-4 mx-auto">
+                  <Users className="w-10 h-10 text-indigo-500" />
+                </div>
+                <p className="text-base font-semibold text-gray-700 mb-1">No contacts found</p>
+                <p className="text-sm text-gray-500">Try adjusting your filters or search query</p>
               </div>
             ) : (
               filteredContacts.map((c, index) => (
@@ -163,48 +167,52 @@ export default function ContactList({ refreshTrigger, onDataChange, notification
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                   whileHover={{ scale: 1.01 }}
-                  className="bg-gradient-to-r from-white to-blue-50/30 border border-gray-200 rounded-xl p-4 hover:shadow-md transition-all cursor-pointer"
+                  className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-lg hover:border-indigo-200 transition-all cursor-pointer"
                   onClick={() => setSelected(c)}
                 >
                   <div className="flex justify-between items-start">
-                    <div className="flex-1 space-y-2">
-                    {/* Name with Person Icon */}
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      <span className="font-semibold text-slate-900">{c.name}</span>
+                    <div className="flex-1 space-y-3">
+                    {/* Name with Avatar */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-md flex-shrink-0">
+                        {c.name.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="font-semibold text-gray-800 text-base">{c.name}</span>
                     </div>
 
                     {/* Phone Number */}
                     {c.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <span className="text-sm text-slate-600">{c.phone}</span>
+                      <div className="flex items-center gap-2.5">
+                        <Phone className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-sm text-gray-700 font-medium">{c.phone}</span>
                       </div>
                     )}
 
                     {/* Email */}
                     {c.email && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <span className="text-sm text-slate-600">{c.email}</span>
+                      <div className="flex items-center gap-2.5">
+                        <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-sm text-gray-600">{c.email}</span>
                       </div>
                     )}
 
                     {/* Last Contact Info */}
                     {c.latest_log && (
-                      <div className="mt-2 pt-2 border-t border-slate-200">
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                          <Clock className="w-3 h-3" />
-                          Last contacted: {new Date(c.latest_log.contacted_at).toLocaleDateString()}
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Clock className="w-3.5 h-3.5" />
+                          Last contacted: <span className="font-medium text-gray-700">{new Date(c.latest_log.contacted_at).toLocaleDateString()}</span>
                         </div>
                         {c.latest_log.contacted_by && (
-                          <div className="flex items-center gap-2 text-xs text-slate-600 mt-1">
-                            <User className="w-3 h-3" />
-                            Contacted by: <span className="font-medium text-blue-600">{c.latest_log.contacted_by}</span>
+                          <div className="flex items-center gap-2 text-xs text-gray-600 mt-1.5">
+                            <User className="w-3.5 h-3.5" />
+                            Contacted by: <span className="font-semibold text-indigo-600">{c.latest_log.contacted_by}</span>
                           </div>
                         )}
                         {c.latest_log.notes && (
-                          <p className="text-xs text-slate-600 mt-1 italic">"{c.latest_log.notes}"</p>
+                          <div className="bg-gray-50 mt-2 p-2.5 rounded-lg border border-gray-200">
+                            <p className="text-xs text-gray-700 italic leading-relaxed">"{c.latest_log.notes}"</p>
+                          </div>
                         )}
                       </div>
                     )}

@@ -1,0 +1,13 @@
+properties:
+  configuration:
+    activeRevisionsMode: Single
+  template:
+    containers:
+    - image: emailautomation22833.azurecr.io/referal-frontend:fixed-import-20251208
+      name: referal-frontend
+      resources:
+        cpu: 0.5
+        memory: 1Gi
+      env:
+      - name: NODE_ENV
+        value: production

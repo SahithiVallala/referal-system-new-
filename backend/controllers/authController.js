@@ -4,10 +4,10 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 
 const signAccessToken = (user) => {
-  return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_ACCESS_SECRET, { expiresIn: '15m' });
+  return jwt.sign({ id: user.id, role: user.role }, process.env.JWT_ACCESS_SECRET, { expiresIn: '15m' });
 }
 const signRefreshToken = (user) => {
-  return jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ id: user.id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 }
 
 exports.register = async (req, res, next) => {
@@ -36,7 +36,7 @@ exports.register = async (req, res, next) => {
     });
     
     console.log(`✅ New user registered: ${email}`);
-    res.status(201).json({ message: 'Account created successfully! You can now login.', userId: user._id });
+    res.status(201).json({ message: 'Account created successfully! You can now login.', userId: user.id });
   } catch (err) { 
     console.error('Registration error:', err);
     next(err); 
@@ -48,7 +48,16 @@ exports.login = async (req, res, next) => {
     const errors = validationResult(req); if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    if (!user || !user.isActive) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+
+    // Check if account is deactivated
+    if (!user.isActive) {
+      return res.status(403).json({
+        message: 'Your account has been blocked by an administrator. Please contact support for assistance.',
+        blocked: true
+      });
+    }
+
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
 
@@ -57,16 +66,26 @@ exports.login = async (req, res, next) => {
 
     // set refresh token in httpOnly cookie
     res.cookie('jid', refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7*24*3600*1000 });
-    res.json({ accessToken, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+    res.json({ accessToken, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (err) { next(err); }
 };
 
-exports.refreshToken = (req, res, next) => {
+exports.refreshToken = async (req, res, next) => {
   try {
     const token = req.cookies.jid;
     if (!token) return res.status(401).json({ message: 'No refresh token' });
     const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-    const accessToken = jwt.sign({ id: payload.id }, process.env.JWT_ACCESS_SECRET, { expiresIn: '15m' });
+
+    // Fetch user to get current role (in case it changed)
+    const user = await User.findById(payload.id);
+    if (!user) return res.status(401).json({ message: 'User not found' });
+
+    // Check if user is still active
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Account deactivated' });
+    }
+
+    const accessToken = signAccessToken(user);
     res.json({ accessToken });
   } catch (err) { return res.status(401).json({ message: 'Invalid refresh token' }); }
 };
@@ -89,7 +108,10 @@ exports.protect = (req, res, next) => {
 exports.getMe = async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
-    const user = await User.findById(req.user.id).select('-password');
-    res.json({ user });
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    // Remove password from response
+    const { password, ...userWithoutPassword } = user;
+    res.json({ user: userWithoutPassword });
   } catch (err) { next(err); }
 };

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
+import UserAnalytics from "../components/UserAnalytics";
 
 export default function AdminUsers() {
   const { user, logout } = useAuth();
@@ -9,6 +10,7 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [selectedUserForAnalytics, setSelectedUserForAnalytics] = useState(null);
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
@@ -242,6 +244,7 @@ export default function AdminUsers() {
                     <th className="text-left py-4 px-6 font-semibold text-gray-900">Role</th>
                     <th className="text-left py-4 px-6 font-semibold text-gray-900">Status</th>
                     <th className="text-left py-4 px-6 font-semibold text-gray-900">Created</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900">Analytics</th>
                     {(user?.role === "superadmin" || user?.role === "admin") && (
                       <th className="text-left py-4 px-6 font-semibold text-gray-900">Actions</th>
                     )}
@@ -283,14 +286,26 @@ export default function AdminUsers() {
                           {new Date(userItem.createdAt).toLocaleDateString()}
                         </div>
                       </td>
+                      <td className="py-4 px-6">
+                        <button
+                          onClick={() => setSelectedUserForAnalytics({ id: userItem._id, name: userItem.name })}
+                          className="px-3 py-1 rounded-lg text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors flex items-center gap-1"
+                          title="View user activity analytics"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                          View
+                        </button>
+                      </td>
                       {(user?.role === "superadmin" || user?.role === "admin") && userItem._id !== user.id && (
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleStatusChange(userItem._id, !userItem.isActive)}
                               className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                                userItem.isActive 
-                                  ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' 
+                                userItem.isActive
+                                  ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
                                   : 'bg-green-100 text-green-700 hover:bg-green-200'
                               }`}
                             >
@@ -315,6 +330,15 @@ export default function AdminUsers() {
             </div>
           )}
         </div>
+
+        {/* User Analytics Modal */}
+        {selectedUserForAnalytics && (
+          <UserAnalytics
+            userId={selectedUserForAnalytics.id}
+            userName={selectedUserForAnalytics.name}
+            onClose={() => setSelectedUserForAnalytics(null)}
+          />
+        )}
       </main>
     </div>
   );

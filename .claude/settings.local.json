@@ -3,7 +3,8 @@
     "allow": [
       "Bash(echo:*)",
       "Bash(\"C:\\Users\\Sahithi\\Desktop\\JR Tracker\\frontend\\.env.local\")",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(node -e:*)"
     ],
     "deny": [],
     "ask": []

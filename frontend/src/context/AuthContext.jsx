@@ -39,30 +39,53 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await api.post("/auth/logout");
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Ignore logout errors
+    }
     setUser(null);
     setAccessToken("");
+    // Clear any stored data
+    localStorage.clear();
+    sessionStorage.clear();
+    // Redirect to login
+    window.location.href = '/login';
   };
 
   // Fetch /me on load
   useEffect(() => {
     (async () => {
       const token = await refreshAccessToken();
-      if (!token) return setLoading(false);
+      if (!token) {
+        setLoading(false);
+        // If no token and we're not on a public page, redirect to login
+        const publicPaths = ['/login', '/register'];
+        if (!publicPaths.includes(window.location.pathname)) {
+          window.location.href = '/login';
+        }
+        return;
+      }
 
       try {
         const { data } = await api.get("/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(data.user);
-      } catch {}
+      } catch {
+        // If /me fails, redirect to login
+        const publicPaths = ['/login', '/register'];
+        if (!publicPaths.includes(window.location.pathname)) {
+          window.location.href = '/login';
+        }
+      }
       setLoading(false);
     })();
   }, []);
 
   // Add request interceptor to include token
   useEffect(() => {
-    const interceptor = api.interceptors.request.use(
+    const requestInterceptor = api.interceptors.request.use(
       (config) => {
         if (accessToken) {
           config.headers.Authorization = `Bearer ${accessToken}`;
@@ -72,7 +95,47 @@ export const AuthProvider = ({ children }) => {
       (error) => Promise.reject(error)
     );
 
-    return () => api.interceptors.request.eject(interceptor);
+    return () => api.interceptors.request.eject(requestInterceptor);
+  }, [accessToken]);
+
+  // Add response interceptor to handle 401 errors
+  useEffect(() => {
+    const responseInterceptor = api.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+
+        // If 401 error and we have a token, try to refresh
+        if (error.response?.status === 401 && accessToken && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          try {
+            const token = await refreshAccessToken();
+            if (token) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              return api(originalRequest);
+            }
+          } catch (refreshError) {
+            // Refresh failed, logout and redirect
+            setUser(null);
+            setAccessToken("");
+            window.location.href = '/login';
+            return Promise.reject(refreshError);
+          }
+        }
+
+        // If still 401, logout and redirect
+        if (error.response?.status === 401) {
+          setUser(null);
+          setAccessToken("");
+          window.location.href = '/login';
+        }
+
+        return Promise.reject(error);
+      }
+    );
+
+    return () => api.interceptors.response.eject(responseInterceptor);
   }, [accessToken]);
 
   return (
