@@ -2,11 +2,9 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileSpreadsheet, X, CheckCircle, AlertCircle, Plus, Trash2, Eye, Users } from 'lucide-react';
 import API from '../utils/api';
-import QuickAddContact from './QuickAddContact';
 
-export default function ExcelImport({ onComplete }) {
-  const [showOptions, setShowOptions] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
+export default function ExcelImport({ onComplete, onClose }) {
+  const [isOpen, setIsOpen] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState(null);
@@ -26,10 +24,13 @@ export default function ExcelImport({ onComplete }) {
   };
 
   React.useEffect(() => {
-    if (isOpen) {
-      loadImports();
-    }
-  }, [isOpen]);
+    loadImports();
+  }, []);
+
+  const handleClose = () => {
+    setIsOpen(false);
+    if (onClose) onClose();
+  };
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -113,7 +114,7 @@ export default function ExcelImport({ onComplete }) {
 
       setTimeout(() => {
         if (onComplete) onComplete();
-        setIsOpen(false);
+        handleClose();
         setResult(null);
       }, 2000);
     } catch (err) {
@@ -127,60 +128,7 @@ export default function ExcelImport({ onComplete }) {
 
   return (
     <>
-      {/* Floating Action Menu */}
-      <div className="fixed bottom-8 right-8 z-50">
-        {/* Options Menu */}
-        <AnimatePresence>
-          {showOptions && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.9 }}
-              className="absolute bottom-20 right-0 bg-white rounded-xl shadow-2xl p-3 space-y-2 min-w-[200px] border border-slate-200"
-            >
-              <button
-                onClick={() => {
-                  setShowOptions(false);
-                  setIsOpen(true);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition-colors text-left group"
-              >
-                <div className="bg-blue-100 p-2 rounded-lg group-hover:bg-blue-200 transition-colors">
-                  <FileSpreadsheet className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900 text-sm">Import Excel</p>
-                  <p className="text-xs text-slate-500">Bulk upload contacts</p>
-                </div>
-              </button>
-              
-              <QuickAddContact onContactAdded={onComplete} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Main FAB Button */}
-        <motion.button
-          whileHover={{ scale: 1.05, rotate: showOptions ? 45 : 0 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowOptions(!showOptions)}
-          animate={{ rotate: showOptions ? 45 : 0 }}
-          className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl group"
-        >
-          <Plus className="w-6 h-6" />
-          {!showOptions && (
-            <motion.span
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="absolute right-16 top-1/2 -translate-y-1/2 bg-gray-900 text-white px-3 py-1 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              Add Contacts
-            </motion.span>
-          )}
-        </motion.button>
-      </div>
-
-      {/* Modal */}
+      {/* Main Import Modal */}
       <AnimatePresence>
         {isOpen && (
           <>
@@ -188,7 +136,7 @@ export default function ExcelImport({ onComplete }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
               className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
             />
             <motion.div
@@ -199,7 +147,7 @@ export default function ExcelImport({ onComplete }) {
             >
               <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 relative">
                 <button
-                  onClick={() => setIsOpen(false)}
+                  onClick={handleClose}
                   className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <X className="w-6 h-6" />

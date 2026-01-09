@@ -3,11 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UserPlus, Mail, Phone, Building, Briefcase, User, CheckCircle, AlertCircle, X } from 'lucide-react';
 import API from '../utils/api';
 
-export default function QuickAddContact({ onContactAdded }) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function QuickAddContact({ onContactAdded, onClose }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', designation: '' });
   const [msg, setMsg] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const handleClose = () => {
+    if (onClose) onClose();
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -21,7 +24,7 @@ export default function QuickAddContact({ onContactAdded }) {
         setForm({ name: '', email: '', phone: '', company: '', designation: '' });
         if (onContactAdded) onContactAdded();
         setTimeout(() => {
-          setIsOpen(false);
+          handleClose();
           setMsg(null);
         }, 1500);
       }
@@ -34,37 +37,22 @@ export default function QuickAddContact({ onContactAdded }) {
 
   return (
     <>
-      {/* Compact Add Button */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-lg border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-all shadow-sm hover:shadow-md font-medium text-sm"
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={handleClose}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
       >
-        <UserPlus className="w-4 h-4" />
-        Quick Add Contact
-      </motion.button>
-
-      {/* Modal */}
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            >
               <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 relative">
                 <button
-                  onClick={() => setIsOpen(false)}
+                  onClick={handleClose}
                   className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <X className="w-6 h-6" />
@@ -201,7 +189,7 @@ export default function QuickAddContact({ onContactAdded }) {
                     </motion.button>
                     <button
                       type="button"
-                      onClick={() => setIsOpen(false)}
+                      onClick={handleClose}
                       className="btn-secondary px-6"
                     >
                       Cancel
@@ -209,10 +197,7 @@ export default function QuickAddContact({ onContactAdded }) {
                   </div>
                 </form>
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      </motion.div>
     </>
   );
 }
