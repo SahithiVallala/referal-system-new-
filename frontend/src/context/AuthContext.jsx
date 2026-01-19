@@ -1,94 +1,239 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
+import { loginRequest, graphConfig } from "../config/msalConfig";
 import api from "../api/axios";
 
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
+  const { instance, accounts, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
+
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState("");
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
 
-  // Refresh token on page reload
-  const refreshAccessToken = async () => {
+  // Get the active account
+  const activeAccount = accounts[0] || null;
+
+  /**
+   * Fetch user profile from Microsoft Graph API
+   */
+  const fetchUserProfile = useCallback(async (token) => {
     try {
-      const { data } = await api.post("/auth/refresh");
-      setAccessToken(data.accessToken);
-      return data.accessToken;
-    } catch {
-      setUser(null);
+      const response = await fetch(graphConfig.graphMeEndpoint, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+
+      const profile = await response.json();
+      return profile;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
       return null;
     }
-  };
+  }, []);
 
-  const login = async (email, password) => {
-    const { data } = await api.post("/auth/login", { email, password });
-    setUser(data.user);
-    setAccessToken(data.accessToken);
-  };
+  /**
+   * Acquire access token silently
+   */
+  const acquireToken = useCallback(async () => {
+    if (!activeAccount) return null;
 
-  const register = async (name, email, password) => {
     try {
-      const { data } = await api.post("/auth/register", { name, email, password });
-      return data;
+      const response = await instance.acquireTokenSilent({
+        ...loginRequest,
+        account: activeAccount,
+      });
+      return response.accessToken;
     } catch (error) {
-      // Re-throw with better error message
-      const message = error.response?.data?.message || error.response?.data?.errors?.[0]?.msg || 'Registration failed';
-      throw { response: { data: { message } } };
+      console.error('Silent token acquisition failed:', error);
+      // If silent acquisition fails, try interactive
+      try {
+        const response = await instance.acquireTokenPopup(loginRequest);
+        return response.accessToken;
+      } catch (interactiveError) {
+        console.error('Interactive token acquisition failed:', interactiveError);
+        return null;
+      }
+    }
+  }, [instance, activeAccount]);
+
+  /**
+   * Initialize user session after authentication
+   */
+  const initializeUserSession = useCallback(async () => {
+    if (!isAuthenticated || !activeAccount) {
+      setUser(null);
+      setAccessToken("");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Acquire access token
+      const token = await acquireToken();
+      if (!token) {
+        throw new Error('Failed to acquire token');
+      }
+      setAccessToken(token);
+
+      // Fetch user profile from Microsoft Graph
+      const profile = await fetchUserProfile(token);
+
+      // Build user object with Azure AD info
+      const userInfo = {
+        id: activeAccount.localAccountId,
+        name: profile?.displayName || activeAccount.name || 'User',
+        email: profile?.mail || profile?.userPrincipalName || activeAccount.username,
+        tenantId: activeAccount.tenantId,
+        // Default role - can be enhanced with Azure AD groups/roles
+        role: 'user',
+        // Additional profile info from Microsoft Graph
+        jobTitle: profile?.jobTitle || null,
+        department: profile?.department || null,
+        officeLocation: profile?.officeLocation || null,
+      };
+
+      setUser(userInfo);
+
+      // Store minimal session info in sessionStorage for quick access
+      sessionStorage.setItem('msalUser', JSON.stringify({
+        name: userInfo.name,
+        email: userInfo.email,
+        tenantId: userInfo.tenantId,
+      }));
+
+    } catch (error) {
+      console.error('Error initializing user session:', error);
+      setAuthError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated, activeAccount, acquireToken, fetchUserProfile]);
+
+  /**
+   * Login with Microsoft
+   */
+  const login = async () => {
+    setAuthError(null);
+    try {
+      // Use redirect for better UX on mobile, popup for desktop
+      await instance.loginPopup(loginRequest);
+      // User session will be initialized by the useEffect
+    } catch (error) {
+      console.error('Login error:', error);
+      // User cancelled the login or error occurred
+      if (error.errorCode !== 'user_cancelled') {
+        setAuthError(error.message || 'Login failed. Please try again.');
+      }
+      throw error;
     }
   };
 
+  /**
+   * Login with redirect (alternative method)
+   */
+  const loginWithRedirect = async () => {
+    setAuthError(null);
+    try {
+      await instance.loginRedirect(loginRequest);
+    } catch (error) {
+      console.error('Login redirect error:', error);
+      setAuthError(error.message || 'Login failed. Please try again.');
+      throw error;
+    }
+  };
+
+  /**
+   * Logout from Microsoft
+   */
   const logout = async () => {
     try {
-      await api.post("/auth/logout");
-    } catch {
-      // Ignore logout errors
+      // Clear local state
+      setUser(null);
+      setAccessToken("");
+      sessionStorage.removeItem('msalUser');
+      localStorage.clear();
+
+      // Logout from Microsoft
+      await instance.logoutPopup({
+        postLogoutRedirectUri: window.location.origin + '/login',
+        mainWindowRedirectUri: window.location.origin + '/login',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if logout fails, clear local state and redirect
+      window.location.href = '/login';
     }
-    setUser(null);
-    setAccessToken("");
-    // Clear any stored data
-    localStorage.clear();
-    sessionStorage.clear();
-    // Redirect to login
-    window.location.href = '/login';
   };
 
-  // Fetch /me on load
-  useEffect(() => {
-    (async () => {
-      const token = await refreshAccessToken();
-      if (!token) {
-        setLoading(false);
-        // If no token and we're not on a public page, redirect to login
-        const publicPaths = ['/login', '/register'];
-        if (!publicPaths.includes(window.location.pathname)) {
-          window.location.href = '/login';
-        }
-        return;
-      }
+  /**
+   * Logout with redirect (alternative method)
+   */
+  const logoutWithRedirect = async () => {
+    try {
+      setUser(null);
+      setAccessToken("");
+      sessionStorage.removeItem('msalUser');
+      localStorage.clear();
 
-      try {
-        const { data } = await api.get("/auth/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUser(data.user);
-      } catch {
-        // If /me fails, redirect to login
-        const publicPaths = ['/login', '/register'];
-        if (!publicPaths.includes(window.location.pathname)) {
-          window.location.href = '/login';
-        }
-      }
-      setLoading(false);
-    })();
-  }, []);
+      await instance.logoutRedirect({
+        postLogoutRedirectUri: window.location.origin + '/login',
+      });
+    } catch (error) {
+      console.error('Logout redirect error:', error);
+      window.location.href = '/login';
+    }
+  };
+
+  /**
+   * Refresh access token
+   */
+  const refreshAccessToken = async () => {
+    const token = await acquireToken();
+    if (token) {
+      setAccessToken(token);
+    }
+    return token;
+  };
+
+  // Initialize session when authentication state changes
+  useEffect(() => {
+    if (inProgress === InteractionStatus.None) {
+      initializeUserSession();
+    }
+  }, [inProgress, isAuthenticated, initializeUserSession]);
 
   // Add request interceptor to include token
   useEffect(() => {
     const requestInterceptor = api.interceptors.request.use(
-      (config) => {
-        if (accessToken) {
-          config.headers.Authorization = `Bearer ${accessToken}`;
+      async (config) => {
+        // Get fresh token for each request
+        let token = accessToken;
+        if (isAuthenticated && activeAccount) {
+          try {
+            const response = await instance.acquireTokenSilent({
+              ...loginRequest,
+              account: activeAccount,
+            });
+            token = response.accessToken;
+          } catch (error) {
+            // Use existing token if silent acquisition fails
+            console.warn('Token refresh failed, using existing token');
+          }
+        }
+
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
       },
@@ -96,7 +241,7 @@ export const AuthProvider = ({ children }) => {
     );
 
     return () => api.interceptors.request.eject(requestInterceptor);
-  }, [accessToken]);
+  }, [accessToken, isAuthenticated, activeAccount, instance]);
 
   // Add response interceptor to handle 401 errors
   useEffect(() => {
@@ -105,8 +250,8 @@ export const AuthProvider = ({ children }) => {
       async (error) => {
         const originalRequest = error.config;
 
-        // If 401 error and we have a token, try to refresh
-        if (error.response?.status === 401 && accessToken && !originalRequest._retry) {
+        // If 401 error and not already retried
+        if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
 
           try {
@@ -116,19 +261,12 @@ export const AuthProvider = ({ children }) => {
               return api(originalRequest);
             }
           } catch (refreshError) {
-            // Refresh failed, logout and redirect
-            setUser(null);
-            setAccessToken("");
-            window.location.href = '/login';
-            return Promise.reject(refreshError);
+            console.error('Token refresh failed:', refreshError);
           }
-        }
 
-        // If still 401, logout and redirect
-        if (error.response?.status === 401) {
-          setUser(null);
-          setAccessToken("");
-          window.location.href = '/login';
+          // Redirect to login if token refresh fails
+          await logout();
+          return Promise.reject(error);
         }
 
         return Promise.reject(error);
@@ -136,21 +274,30 @@ export const AuthProvider = ({ children }) => {
     );
 
     return () => api.interceptors.response.eject(responseInterceptor);
-  }, [accessToken]);
+  }, []);
+
+  // Show loading spinner while checking auth status
+  const isLoading = loading || inProgress !== InteractionStatus.None;
 
   return (
     <AuthContext.Provider
-      value={{ 
-        user, 
-        accessToken, 
-        login, 
-        register, 
-        logout, 
+      value={{
+        user,
+        accessToken,
+        login,
+        loginWithRedirect,
+        logout,
+        logoutWithRedirect,
         refreshAccessToken,
-        loading 
+        loading: isLoading,
+        isAuthenticated,
+        authError,
+        // Expose MSAL instance for advanced use cases
+        msalInstance: instance,
+        accounts,
       }}
     >
-      {loading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center h-screen bg-gray-50">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>

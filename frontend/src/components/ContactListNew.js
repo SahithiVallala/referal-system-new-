@@ -282,7 +282,7 @@ export default function ContactList({
 
         {/* Built with love footer */}
         <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex-shrink-0">
-          <p className="text-xs text-center text-gray-500">Built with ❤️ for efficient staffing operations</p>
+          <p className="text-xs text-center text-gray-500">Powered by TechGene</p>
         </div>
       </div>
 

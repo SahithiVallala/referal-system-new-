@@ -1,11 +1,24 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
+
+// Microsoft Logo SVG Component
+const MicrosoftLogo = () => (
+  <svg
+    width="21"
+    height="21"
+    viewBox="0 0 21 21"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+    <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+    <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+    <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+  </svg>
+);
 
 export default function Login() {
-  const { user, login } = useAuth();
-  const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("admin123");
+  const { user, login, loginWithRedirect, authError, loading } = useAuth();
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -14,19 +27,45 @@ export default function Login() {
     return <Navigate to="/" replace />;
   }
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleMicrosoftLogin = async () => {
     setError("");
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login();
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid email or password");
+      // Don't show error for user cancellation
+      if (err?.errorCode !== 'user_cancelled') {
+        setError(err?.message || "Sign in failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleMicrosoftLoginRedirect = async () => {
+    setError("");
+    setIsLoading(true);
+
+    try {
+      await loginWithRedirect();
+    } catch (err) {
+      setError(err?.message || "Sign in failed. Please try again.");
+      setIsLoading(false);
+    }
+  };
+
+  // Show loading if auth context is still initializing
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 px-4">
@@ -43,79 +82,74 @@ export default function Login() {
           <p className="text-xs text-gray-400">Powered by <span className="font-semibold text-indigo-600">TechGene</span></p>
         </div>
 
-        {/* Login Form */}
+        {/* Login Card */}
         <div className="bg-white shadow-xl rounded-2xl p-8 border border-gray-100">
-          {error && (
+          {/* Error Message */}
+          {(error || authError) && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700 text-sm text-center">{error}</p>
+              <p className="text-red-700 text-sm text-center">{error || authError}</p>
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                placeholder="Enter your email"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-gray-50 hover:bg-white"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                placeholder="Enter your password"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-gray-50 hover:bg-white"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-600 hover:to-indigo-700 focus:ring-4 focus:ring-blue-300 transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              {isLoading ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Signing in...</span>
-                </div>
-              ) : (
-                "Sign in"
-              )}
-            </button>
-          </form>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-xs text-blue-700 font-medium mb-1">Demo Credentials:</p>
-            <p className="text-xs text-blue-600">Email: admin@example.com</p>
-            <p className="text-xs text-blue-600">Password: admin123</p>
+          {/* Sign In Header */}
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">Welcome Back</h2>
+            <p className="text-gray-500 text-sm mt-1">Sign in with your company Microsoft account</p>
           </div>
 
-          {/* Register Link */}
-          <div className="mt-6 text-center">
-            <p className="text-gray-600 text-sm">
-              Don't have an account?{" "}
-              <Link 
-                to="/register" 
-                className="font-semibold text-blue-600 hover:text-blue-700 transition-colors duration-200"
-              >
-                Create one here
-              </Link>
-            </p>
+          {/* Microsoft Sign In Button */}
+          <button
+            onClick={handleMicrosoftLogin}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-3 bg-white text-gray-700 py-3 px-4 rounded-lg font-medium border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 focus:ring-4 focus:ring-blue-100 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                <span>Signing in...</span>
+              </>
+            ) : (
+              <>
+                <MicrosoftLogo />
+                <span>Sign in with Microsoft</span>
+              </>
+            )}
+          </button>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-gray-500">or</span>
+            </div>
+          </div>
+
+          {/* Alternative: Redirect Method */}
+          <button
+            onClick={handleMicrosoftLoginRedirect}
+            disabled={isLoading}
+            className="w-full text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Having trouble? Try redirect sign-in
+          </button>
+
+          {/* Info Section */}
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-0.5">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs text-blue-700 font-medium mb-1">Microsoft Entra ID Sign-In</p>
+                <p className="text-xs text-blue-600">
+                  Use your company Microsoft account to sign in. Contact your IT administrator if you don't have access.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 

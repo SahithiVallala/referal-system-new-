@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import dayjs from 'dayjs';
 import { AnimatePresence, motion } from 'framer-motion';
+
+// MSAL Imports for Microsoft Authentication
+import { PublicClientApplication } from "@azure/msal-browser";
+import { MsalProvider } from "@azure/msal-react";
+import { msalConfig } from "./config/msalConfig";
+
+// Authentication Context
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Application Components
 import ContactList from './components/ContactListNew';
@@ -9,11 +17,96 @@ import QuickAddContact from './components/QuickAddContact';
 import ExcelImport from './components/ExcelImport';
 import FollowUps from './components/FollowUps';
 import JobRequirements from './components/JobRequirements';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
 import API from './utils/api';
-import { Users, CheckCircle, FileText, Clock, Bell, Settings, UserPlus, Upload, Download } from 'lucide-react';
+import { Users, CheckCircle, FileText, Clock, Bell, Settings, UserPlus, Upload, Download, LogOut, User } from 'lucide-react';
+
+// Initialize MSAL instance
+const msalInstance = new PublicClientApplication(msalConfig);
+
+// User Profile Dropdown Component
+function UserProfileDropdown({ user, onLogout }) {
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Get initials from user name
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowDropdown(!showDropdown)}
+        className="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+      >
+        <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-md">
+          {getInitials(user?.name)}
+        </div>
+      </button>
+
+      {showDropdown && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setShowDropdown(false)}
+          />
+
+          {/* Dropdown */}
+          <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl py-2 border border-gray-100 z-50">
+            {/* User Info */}
+            <div className="px-4 py-3 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
+                  {getInitials(user?.name)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{user?.name || 'User'}</p>
+                  <p className="text-sm text-gray-500 truncate">{user?.email || ''}</p>
+                </div>
+              </div>
+              {user?.jobTitle && (
+                <p className="mt-2 text-xs text-gray-500">{user.jobTitle}</p>
+              )}
+            </div>
+
+            {/* Account Info */}
+            <div className="px-4 py-2 border-b border-gray-100">
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <User className="w-3 h-3" />
+                <span>Microsoft Account</span>
+              </div>
+            </div>
+
+            {/* Logout Button */}
+            <div className="px-2 pt-2">
+              <button
+                onClick={() => {
+                  setShowDropdown(false);
+                  onLogout();
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign out</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // Main Application Component (Your original app with stats sidebar)
 function MainApplication() {
+  const { user, logout } = useAuth();
   const [contacts, setContacts] = useState([]);
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +141,7 @@ function MainApplication() {
   const notContacted = contacts.filter(c => !c.latest_log);
   const hasRequirement = contacts.filter(c => c.latest_log?.response === 'yes');
   const noRequirement = contacts.filter(c => c.latest_log?.response === 'no');
-  
+
   // ALL pending follow-ups (not just today) for dashboard
   const allPendingFollowups = contacts.filter(c => {
     if (!c.latest_log?.follow_up_date) return false;
@@ -140,10 +233,10 @@ function MainApplication() {
               <p className="text-xs text-gray-500">Track Contacts. Capture Opportunities. <span className="text-indigo-600 font-medium">by TechGene</span></p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             {/* Settings Menu */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => {
                   setShowSettingsMenu(!showSettingsMenu);
                 }}
@@ -152,8 +245,8 @@ function MainApplication() {
                 <Settings className="w-5 h-5 text-gray-600" />
               </button>
               {showSettingsMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-2 border border-gray-100">
-                  <button 
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-2 border border-gray-100 z-50">
+                  <button
                     onClick={() => {
                       alert('Notification settings feature coming soon!');
                       setShowSettingsMenu(false);
@@ -163,7 +256,7 @@ function MainApplication() {
                     <Bell className="w-4 h-4" />
                     Notification Settings
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       handleExportRequirements();
                       setShowSettingsMenu(false);
@@ -176,6 +269,9 @@ function MainApplication() {
                 </div>
               )}
             </div>
+
+            {/* User Profile */}
+            <UserProfileDropdown user={user} onLogout={logout} />
           </div>
         </div>
       </header>
@@ -220,7 +316,7 @@ function MainApplication() {
                     </div>
                     <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
                     <div className="mt-3 h-1.5 bg-white/60 rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className={`h-full ${stat.iconBg} rounded-full transition-all duration-500`}
                         style={{ width: `${Math.min((stat.value / Math.max(contacts.length, 1)) * 100, 100)}%` }}
                       ></div>
@@ -239,7 +335,7 @@ function MainApplication() {
 
         {/* Right Content - Contact List */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          <ContactList 
+          <ContactList
             refreshTrigger={refreshTrigger}
             onDataChange={() => setRefreshTrigger(prev => prev + 1)}
             notificationCount={todayFollowups.length}
@@ -327,7 +423,7 @@ function MainApplication() {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 overflow-y-auto"
             >
-              <FollowUps 
+              <FollowUps
                 refreshTrigger={refreshTrigger}
                 onDataChange={() => setRefreshTrigger(prev => prev + 1)}
                 showModal={showNotifications}
@@ -367,12 +463,35 @@ function MainApplication() {
   );
 }
 
+// App Routes Component (inside AuthProvider)
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Public Route - Login */}
+      <Route path="/login" element={<Login />} />
+
+      {/* Protected Route - Main Application */}
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <MainApplication />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
+}
+
+// Main App Component
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/*" element={<MainApplication />} />
-      </Routes>
-    </BrowserRouter>
+    <MsalProvider instance={msalInstance}>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </MsalProvider>
   );
 }
